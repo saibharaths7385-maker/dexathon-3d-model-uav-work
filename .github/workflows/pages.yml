@@ -3,15 +3,34 @@ on:
   push: { branches: [main] }
   workflow_dispatch: {}
 permissions: { contents: read, pages: write, id-token: write }
+concurrency: { group: pages, cancel-in-progress: true }
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
     steps:
       - uses: actions/checkout@v4
+      # Creating the Pages site itself needs repository-owner rights, which a workflow
+      # token never has, so the first run cannot switch it on. Detect that and skip
+      # with a notice instead of failing every push until a human enables it once.
+      - id: gate
+        name: Is Pages enabled?
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/pages")
+          if [ "$code" = 200 ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=GitHub Pages is not enabled::Settings > Pages > Source: GitHub Actions, then re-run this workflow."
+          fi
       - uses: actions/configure-pages@v5
-        with: { enablement: true }   # turns Pages on itself instead of waiting for a Settings toggle
+        if: steps.gate.outputs.enabled == 'true'
       - uses: actions/upload-pages-artifact@v3
+        if: steps.gate.outputs.enabled == 'true'
         with: { path: skynex-simulator }
       - id: d
+        if: steps.gate.outputs.enabled == 'true'
         uses: actions/deploy-pages@v4

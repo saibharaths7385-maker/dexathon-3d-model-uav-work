@@ -89,6 +89,8 @@ feed supplies them.
 The workflows live at the repository root (`.github/workflows/`), because GitHub
 ignores workflow files anywhere else. `ci.yml` syntax-checks the app, runs the unit
 tests, the `ingest()` browser tests and the mock-server test, and verifies the
-single-file build is current. `pages.yml` publishes this folder to GitHub Pages and
-enables Pages itself on the first run, so the live demo above needs no manual toggle.
+single-file build is current. `pages.yml` publishes this folder to GitHub Pages once
+Pages is switched on for the repository (Settings > Pages > Source: GitHub Actions —
+one click, and it can only be done by the owner). Until then that job skips with a
+notice instead of failing.
 MIT licence in `LICENSE` (third-party notices in `vendor/LICENSE-three.txt`).
