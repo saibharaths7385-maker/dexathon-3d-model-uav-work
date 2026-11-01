@@ -77,4 +77,4 @@ feed supplies them.
 CI (`.github/workflows/ci.yml`) syntax-checks the app, runs the unit tests and the
 mock-server test, and verifies the single-file build is current. `pages.yml`
 publishes `skynex-simulator/` to GitHub Pages (Settings > Pages > Source: GitHub
-Actions). MIT licence in `LICENSE` (replace the placeholder copyright line).
+Actions). MIT licence in `LICENSE` (third-party notices in `vendor/LICENSE-three.txt`).
