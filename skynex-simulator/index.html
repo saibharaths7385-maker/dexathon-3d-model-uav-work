@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>SKYNEX 3D Simulator</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/app.css"></head><body>
+<div id="app">
+<header>
+ <div class="logo">SKYNEX</div>
+ <svg viewBox="0 0 60 24" width="50"><path d="M2 12L30 10L46 2L50 2L42 11L58 12L42 13L50 22L46 22L30 14Z" fill="#38bdf8"/></svg>
+ <div class="ttl">UAV ENVIRONMENTAL MISSION SIMULATOR</div><div class="sp"></div>
+ <div id="live"><i></i><span id="livet">DEMO SIMULATION</span></div>
+ <div class="hb"><small>Mission Time</small><b id="mtime">00:00:00</b></div>
+ <div class="hb"><small>Simulation Speed</small><div class="seg"><button id="sp1" class="on">1x</button><button id="sp2">2x</button></div></div>
+ <div class="hb"><small>Flight View Size</small><div class="seg"><button data-vs="50">50%</button><button data-vs="75">75%</button><button data-vs="100">100%</button></div></div><button id="bFull" class="rst" title="Browser full screen" aria-label="Browser full screen">⛶</button><button id="bLobby" class="rst" title="Back to the scenario lobby">◀ Scenarios</button><button id="bPause" class="pause" aria-label="Pause simulation">⏸ Pause</button><button id="bReset" class="rst" aria-label="Reset simulation">⟳ Reset</button><button id="bGear" class="rst" title="Data source, manual control, terrain loaders" aria-label="Options">⚙</button>
+</header>
+<div id="main">
+ <aside id="left">
+  <div class="p"><div id="aimg"></div><h2 id="aname"></h2><div id="atype"></div><div id="aspec"></div></div>
+  <div class="p"><h3>ENVIRONMENTAL CONDITIONS</h3><div id="env"></div></div>
+  <div class="p evp"><h3>MISSION EVENTS</h3><div id="evl"></div></div>
+ </aside>
+ <section id="centre">
+  <div id="banner" class="p"><div id="sicon"></div><div class="sd"><b id="sname"></b><small id="sdesc"></small></div><div id="steps"></div></div>
+  <div id="view">
+   <div id="tel"></div>
+   <div id="cmp"><div id="dial"><span class="n">N</span><span class="e">E</span><span class="s">S</span><span class="w">W</span></div><svg id="cpl" viewBox="0 0 20 20"><path d="M10 2L15 17L10 14L5 17Z" fill="#fff"/></svg></div>
+   <canvas id="mm" width="150" height="190"></canvas>
+   <div id="camb"><button data-cam="chase" class="on">Chase</button><button data-cam="fpv">FPV</button><button data-cam="top">Top</button><button data-cam="free">Free</button></div>
+   <div id="fl"></div><div id="warn"></div><div id="stale">STALE DATA — holding last known state</div>
+  </div>
+  <div id="tstrip"></div>
+  <div id="bot"><div class="p"><h3>ENVIRONMENT VIEW <small>(Side View)</small></h3><canvas id="sv" width="900" height="200"></canvas></div>
+   <div class="p"><h3>CAMERA VIEW <small>(Top View)</small></h3><canvas id="cvTop" width="320" height="180"></canvas></div></div>
+ </section>
+</div></div>
+<div id="lobby"><div id="lh"><div class="logo">SKYNEX</div><svg viewBox="0 0 60 24" width="44"><path d="M2 12L30 10L46 2L50 2L42 11L58 12L42 13L50 22L46 22L30 14Z" fill="#38bdf8"/></svg><div class="ttl">UAV ENVIRONMENTAL SIMULATION</div><div class="sp"></div>
+<label>Select UAV<select id="lac"><option value="EAGLE_EYE_MINI">Eagle Eye Mini (Petrol)</option><option value="RQ11B" selected>RQ-11B Raven (Electric)</option></select></label><label>Select Scenario<select id="lsc"></select></label>
+<label>Simulation Speed<div class="seg"><button id="lsp1" class="on">1x</button><button id="lsp2">2x</button></div></label><label>Flight View Size<div class="seg"><button data-vs="50">50%</button><button data-vs="75">75%</button><button data-vs="100">100%</button></div></label><button class="act g" id="lStart">Start</button><button class="act b" id="lPause">Pause</button><button class="act r" id="lReset">Reset</button></div><div id="grid"></div></div>
+<div id="ctl" class="box">
+ <b>SKYNEX 3D · Laptop 2</b>
+ <input id="url" value="ws://192.168.1.10:8000/ws/3d-simulator" spellcheck="false">
+ <div class="row"><button id="bLive">Connect live</button><button id="bDemo" class="on">Demo mode</button></div>
+ <button id="bMan">Manual control (sliders + drag)</button>
+ <div class="row"><select id="ac"><option value="EAGLE_EYE_MINI">Eagle Eye Mini</option><option value="RQ11B">RQ-11B Raven</option></select>
+ <select id="sc"><option>FOREST</option><option>URBAN</option><option>ASH</option><option>DESERT</option><option>MOUNTAIN</option></select></div>
+ <input id="tok" placeholder="auth token (optional, sent as ?token=)">
+ <button id="bRec">Replay last mission</button>
+ <div class="row"><select id="spd"><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option></select><input id="glb" type="file" accept=".glb" title="Load a .glb for the current aircraft"></div>
+ <div class="row"><select id="wx"><option>CLEAR</option><option>CLOUDY</option><option>RAIN</option><option>FOG</option><option>DUST</option></select><input id="tod" type="range" min="5" max="19" step=".25" value="11" title="Time of day (sun position)"></div>
+ <select id="ql" title="Render quality (terrain detail + vegetation density); auto-lowers if FPS is poor"><option>HIGH</option><option>MED</option><option>LOW</option></select>
+ <input id="ll" value="12.97,77.59" title="lat,lon used for real data when no live origin exists">
+ <div class="row"><button id="bDEM">Real terrain (DEM)</button><button id="bOSM">OSM buildings/roads</button></div><button id="bSat">Satellite imagery</button>
+ <small id="dsrc"></small>
+ <input id="tif" type="file" accept=".tif,.tiff" title="GeoTIFF DEM in EPSG:4326 (lat/lon) covering the aircraft origin">
+ <div class="row"><input id="hm" type="file" accept="image/*" title="Grayscale DEM heightmap covering 8x8 km"><input id="hmA" type="number" value="600" title="Elevation of white pixels (m)"></div>
+ <small style="color:#8aa0c0">Selectors drive demo mode only; live frames decide aircraft and scenario. GLB: forward = -Z, name the propeller node "prop". Wheel = zoom. Drag any panel by its background to move it. Manual + Top camera: drag the aircraft on the map. Drop a .glb anywhere to load a model.</small>
+</div>
+<div id="man" class="box"></div>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="vendor/geotiff.js"></script>
+<script src="js/app.js"></script></body></html>
