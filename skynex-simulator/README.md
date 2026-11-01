@@ -3,6 +3,14 @@
 A browser-based UAV environmental mission simulator: 3D terrain, live telemetry,
 faults, a mission report, and a demo that runs with no server and no internet.
 
+**Live demo:** https://saibharaths7385-maker.github.io/dexathon-3d-model-uav-work/
+
+![Takeoff, climb and the ash plume crossing](docs/img/demo.gif)
+
+| Lobby | Takeoff | Into the ash plume |
+|---|---|---|
+| ![Lobby](docs/img/lobby.jpg) | ![Takeoff](docs/img/takeoff.jpg) | ![Ash plume](docs/img/ash-plume.jpg) |
+
 ## Running
 
 - Quick look: open `index.html` (works offline; libraries are in `vendor/`).
@@ -63,8 +71,12 @@ In the viewer open the gear menu, set `ws://127.0.0.1:8000/ws/3d-simulator`, pre
 `--stall-at 20 --stall-for 8` freezes the stream to show the stale-data banner.
 The server is stdlib-only Python; `websockets` is needed just for its test.
 
-Frame format: `docs/frames.md`. Tests: `node tools/run_tests.js` (or open
-`tests.html`), `python tools/test_mock_server.py`.
+Frame format: `docs/frames.md`. Tests:
+
+- `node tools/run_tests.js` (or open `tests.html`): pure helpers in `core.js`
+- `node tools/ingest_test.js`: headless Chromium (needs `npm i playwright`); smoke test (Start, mission clock runs, zero console errors) plus `ingest()` clamping, seq/reconnect watermark, fault dedupe, batch resets, and a replay of `fixtures/frames.json`
+- `python tools/test_mock_server.py`
+- `node tools/make_fixture.js` regenerates the fixture from the demo generator
 
 ## Data honesty
 
@@ -74,7 +86,9 @@ feed supplies them.
 
 ## Repo
 
-CI (`.github/workflows/ci.yml`) syntax-checks the app, runs the unit tests and the
-mock-server test, and verifies the single-file build is current. `pages.yml`
-publishes `skynex-simulator/` to GitHub Pages (Settings > Pages > Source: GitHub
-Actions). MIT licence in `LICENSE` (third-party notices in `vendor/LICENSE-three.txt`).
+The workflows live at the repository root (`.github/workflows/`), because GitHub
+ignores workflow files anywhere else. `ci.yml` syntax-checks the app, runs the unit
+tests, the `ingest()` browser tests and the mock-server test, and verifies the
+single-file build is current. `pages.yml` publishes this folder to GitHub Pages and
+enables Pages itself on the first run, so the live demo above needs no manual toggle.
+MIT licence in `LICENSE` (third-party notices in `vendor/LICENSE-three.txt`).

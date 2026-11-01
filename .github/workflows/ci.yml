@@ -13,6 +13,11 @@ jobs:
       - run: node --check js/core.js
       - run: node --check js/app.js
       - run: node tools/run_tests.js
+      - name: ingest + browser smoke tests
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+          node tools/ingest_test.js
       - run: python -m py_compile tools/mock_server.py
       - run: pip install websockets && python tools/test_mock_server.py
       - name: single-file build is up to date

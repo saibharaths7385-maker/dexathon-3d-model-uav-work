@@ -10,6 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+        with: { enablement: true }   # turns Pages on itself instead of waiting for a Settings toggle
       - uses: actions/upload-pages-artifact@v3
         with: { path: skynex-simulator }
       - id: d
