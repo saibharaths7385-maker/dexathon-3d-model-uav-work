@@ -1,34 +1,80 @@
 # SKYNEX UAV Environmental Simulation
 
-Open `index.html` (works offline; libraries in `vendor/`).
-
-**Flight View Size 50% / 75% / 100%** (lobby header and dashboard header):
-- 50% / 75%: the flight view is that share of the screen height; scroll the centre column for the charts below.
-- 100%: the flight view fills the whole screen under the header. The ⛶ button also goes browser full screen.
-
-Pick a UAV and scenario in the lobby, press Start (or a card's Open button). Data is the built-in demo mission (labelled DEMO SIMULATION).
+A browser-based UAV environmental mission simulator: 3D terrain, live telemetry,
+faults, a mission report, and a demo that runs with no server and no internet.
 
 ## Running
 
-- Quick look: open `index.html` directly (works offline; libraries are in `vendor/`).
-- Recommended for the demo: serve the folder so `.glb` models and real-data loaders work —
-  `cd skynex-simulator && python -m http.server 8000`, then open http://localhost:8000
+- Quick look: open `index.html` (works offline; libraries are in `vendor/`).
+- Recommended for the demo: serve the folder so `.glb` models, real-data
+  loaders and the service worker work —
 
-The app is the demo path; live telemetry comes from the ⚙ panel (Laptop 1 over WebSocket, or manual sliders).
+  ```bash
+  cd skynex-simulator && python -m http.server 8000
+  ```
+
+  then open http://localhost:8000
+
+Pick a UAV and scenario in the lobby, press Start (or a card's Open button). Data
+is the built-in demo mission, labelled **DEMO SIMULATION**.
+
+## Features
+
+- Lobby with 5 scenario cards, UAV select, Start / Pause / Reset, speed 1x / 2x
+- **Flight View Size 50% / 75% / 100%** (lobby and dashboard header) and a browser full-screen button
+- **Link health** in the header: RTT, frames/s, dropped and bad frames, last-packet age, schema mismatch warning
+- **Alert log** (key `L`): timestamped, severity-tagged, persists across resets; optional audio cue per new fault
+- **Mission report** (HTML download): route, altitude profile, peaks, alert timeline, 3D screenshot, with the data source labelled
+- **Screenshot** of the 3D view; **save / load recordings** (.json) with a replay scrubber
+- Keyboard help overlay (`H` or `?`)
+- **Plan route** (lobby): click up to 10 waypoints on a 4 km map and fly them in the demo mission
+- **Units toggle** (log panel): metric or imperial readouts (chart axes stay SI)
+- **Perf HUD**: fps, draw calls, triangles, quality, pixel ratio, cache hits
+- **Cache**: DEM (Open-Meteo) and OSM (Overpass) downloads are kept in IndexedDB for 30 days
+- **Touch**: pinch to zoom, one-finger drag; **PWA**: installable and offline when served over http(s)
 
 ## Single-file build
 
-`python build.py` inlines the CSS, `js/app.js` and the three vendor libraries into one
-self-contained `../skynex-simulator-flightview.html` (~1 MB) that runs from `file://` with no
-server and no internet. Rebuild it after editing the project files — never hand-edit the
-single-file HTML.
+`python build.py` inlines the CSS, `js/core.js`, `js/app.js` and the three vendor
+libraries into one self-contained `../skynex-simulator-flightview.html` (~1.1 MB)
+that runs from `file://` with no server and no internet. Rebuild it after editing
+the project files — never hand-edit the single-file HTML. CI fails if the
+committed build is stale.
 
 ## Models
 
-Drop `eagle-eye-mini.glb` / `rq-11b-raven.glb` into `models/` and list them in
-`models/index.json`, e.g. `{"EAGLE": "eagle-eye-mini.glb", "RAVEN": "rq-11b-raven.glb"}`.
-Nothing is probed that is not listed, so a missing model never spams the console with 404s.
+Give `models/index.json` a map of aircraft to file name, e.g.
 
-## Files
+```json
+{"EAGLE": "eagle-eye-mini.glb", "RAVEN": "rq-11b-raven.glb"}
+```
 
-index.html, css/app.css, js/app.js, build.py, vendor/ (three.js r128 MIT, GLTFLoader, geotiff 2.1.3), models/.
+Nothing is probed that is not listed, so an absent model never spams the console
+with 404s. See `models/README.txt`.
+
+## Live mode without Laptop 1
+
+```bash
+python tools/mock_server.py --aircraft RQ11B --scenario DESERT
+```
+
+In the viewer open the gear menu, set `ws://127.0.0.1:8000/ws/3d-simulator`, press
+**Connect live**. Fault injection: `--drop 0.1` loses 10% of frames;
+`--stall-at 20 --stall-for 8` freezes the stream to show the stale-data banner.
+The server is stdlib-only Python; `websockets` is needed just for its test.
+
+Frame format: `docs/frames.md`. Tests: `node tools/run_tests.js` (or open
+`tests.html`), `python tools/test_mock_server.py`.
+
+## Data honesty
+
+Demo mode and the mock server are synthetic. Reports label their source
+(DEMO / LIVE / MANUAL). Humidity and visibility are demo values unless your live
+feed supplies them.
+
+## Repo
+
+CI (`.github/workflows/ci.yml`) syntax-checks the app, runs the unit tests and the
+mock-server test, and verifies the single-file build is current. `pages.yml`
+publishes `skynex-simulator/` to GitHub Pages (Settings > Pages > Source: GitHub
+Actions). MIT licence in `LICENSE` (replace the placeholder copyright line).

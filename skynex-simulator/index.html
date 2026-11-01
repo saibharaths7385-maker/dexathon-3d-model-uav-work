@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><title>SKYNEX 3D Simulator</title>
+<html lang="en"><head><meta charset="utf-8"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#050b17"><title>SKYNEX 3D Simulator</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="css/app.css"></head><body>
 <div id="app">
@@ -10,7 +10,7 @@
  <div id="live"><i></i><span id="livet">DEMO SIMULATION</span></div>
  <div class="hb"><small>Mission Time</small><b id="mtime">00:00:00</b></div>
  <div class="hb"><small>Simulation Speed</small><div class="seg"><button id="sp1" class="on">1x</button><button id="sp2">2x</button></div></div>
- <div class="hb"><small>Flight View Size</small><div class="seg"><button data-vs="50">50%</button><button data-vs="75">75%</button><button data-vs="100">100%</button></div></div><button id="bFull" class="rst" title="Browser full screen" aria-label="Browser full screen">⛶</button><button id="bLobby" class="rst" title="Back to the scenario lobby">◀ Scenarios</button><button id="bPause" class="pause" aria-label="Pause simulation">⏸ Pause</button><button id="bReset" class="rst" aria-label="Reset simulation">⟳ Reset</button><button id="bGear" class="rst" title="Data source, manual control, terrain loaders" aria-label="Options">⚙</button>
+ <div class="hb"><small>Flight View Size</small><div class="seg"><button data-vs="50">50%</button><button data-vs="75">75%</button><button data-vs="100">100%</button></div></div><div class="hb"><small>Link</small><b id="lnk" style="font-size:12px;font-weight:600">local</b></div><button id="bLog" class="rst" style="padding:10px 12px" title="Alert log and tools (L)" aria-label="Alert log and tools">📋</button><button id="bHelp" class="rst" style="padding:10px 12px" title="Keys (H)" aria-label="Keyboard shortcuts">?</button><button id="bFull" class="rst" title="Browser full screen" aria-label="Browser full screen">⛶</button><button id="bLobby" class="rst" title="Back to the scenario lobby">◀ Scenarios</button><button id="bPause" class="pause" aria-label="Pause simulation">⏸ Pause</button><button id="bReset" class="rst" aria-label="Reset simulation">⟳ Reset</button><button id="bGear" class="rst" title="Data source, manual control, terrain loaders" aria-label="Options">⚙</button>
 </header>
 <div id="main">
  <aside id="left">
@@ -34,7 +34,15 @@
 </div></div>
 <div id="lobby"><div id="lh"><div class="logo">SKYNEX</div><svg viewBox="0 0 60 24" width="44"><path d="M2 12L30 10L46 2L50 2L42 11L58 12L42 13L50 22L46 22L30 14Z" fill="#38bdf8"/></svg><div class="ttl">UAV ENVIRONMENTAL SIMULATION</div><div class="sp"></div>
 <label>Select UAV<select id="lac"><option value="EAGLE_EYE_MINI">Eagle Eye Mini (Petrol)</option><option value="RQ11B" selected>RQ-11B Raven (Electric)</option></select></label><label>Select Scenario<select id="lsc"></select></label>
-<label>Simulation Speed<div class="seg"><button id="lsp1" class="on">1x</button><button id="lsp2">2x</button></div></label><label>Flight View Size<div class="seg"><button data-vs="50">50%</button><button data-vs="75">75%</button><button data-vs="100">100%</button></div></label><button class="act g" id="lStart">Start</button><button class="act b" id="lPause">Pause</button><button class="act r" id="lReset">Reset</button></div><div id="grid"></div></div>
+<label>Simulation Speed<div class="seg"><button id="lsp1" class="on">1x</button><button id="lsp2">2x</button></div></label><label>Flight View Size<div class="seg"><button data-vs="50">50%</button><button data-vs="75">75%</button><button data-vs="100">100%</button></div></label><button class="act b" id="bRoute" style="background:#7c3aed">✏ Plan route</button><button class="act g" id="lStart">Start</button><button class="act b" id="lPause">Pause</button><button class="act r" id="lReset">Reset</button></div><div id="grid"></div></div>
+<div id="alp" class="box"><b>Alert log &amp; tools</b>
+<div class="row"><button id="tShot">📷 Screenshot</button><button id="tRep">📄 Mission report</button></div>
+<div class="row"><button id="tSave">💾 Save recording</button><button id="tLoad">📂 Load recording</button></div><input id="tFile" type="file" accept=".json" style="display:none">
+<div class="row"><button id="tSnd">🔕 Audio cues: off</button><button id="tClr">Clear log</button></div><div class="row"><button id="tUnit">Units: metric</button><button id="tPerf">Perf HUD: off</button></div><div id="alg"></div></div>
+<div id="scrub" class="box" style="left:50%;bottom:12px;transform:translateX(-50%);width:min(520px,80vw);display:none"><small id="scl"></small><input type="range" id="scr" min="0" max="1" value="0" style="width:100%"></div>
+<div id="perf" class="box" style="left:12px;bottom:12px;display:none;font:11px monospace"></div>
+<div id="rte"><div class="p" style="width:min(680px,94vw)"><h3>Plan a route <small>click to add waypoints (first click = takeoff, max 10)</small></h3><canvas id="rc" width="640" height="640" style="width:100%;background:#0b1426;border-radius:6px;cursor:crosshair"></canvas><div id="rinfo" style="margin:6px 0;color:#b6c4dc;font-size:12px"></div><div class="row"><button id="rUndo">Undo</button><button id="rClr">Clear</button></div><div class="row" style="margin-top:6px"><button id="rFly" style="background:#16a34a">Fly this route</button><button id="rClose">Close</button></div></div></div>
+<div id="kb"><div class="p" style="max-width:420px"><h3>Keyboard</h3><div class="sr"><span>1 / 2 / 3 / 4</span><b>Chase / FPV / Top / Free camera</b></div><div class="sr"><span>Mouse wheel</span><b>Zoom</b></div><div class="sr"><span>L</span><b>Alert log and tools</b></div><div class="sr"><span>H or ?</span><b>This help</b></div><div class="sr"><span>Drag a panel</span><b>Move it</b></div><small>Click anywhere to close</small></div></div>
 <div id="ctl" class="box">
  <b>SKYNEX 3D · Laptop 2</b>
  <input id="url" value="ws://192.168.1.10:8000/ws/3d-simulator" spellcheck="false">
@@ -58,4 +66,4 @@
 <script src="vendor/three.min.js"></script>
 <script src="vendor/GLTFLoader.js"></script>
 <script src="vendor/geotiff.js"></script>
-<script src="js/app.js"></script></body></html>
+<script src="js/core.js"></script><script src="js/app.js"></script></body></html>

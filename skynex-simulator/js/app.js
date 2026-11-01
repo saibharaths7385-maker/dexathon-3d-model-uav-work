@@ -8,11 +8,10 @@ const SC={
  MOUNTAIN:{sky:0xb8d0e8,vis:9000,g:0x6b7078,g2:0xf2f5f8,amp:300,haze:0xffffff,wind:18,temp:-4,turb:'HIGH'}
 };
 const S={sc:'FOREST',ac:'EAGLE'};
-function sstep(a){a=Math.max(0,Math.min(1,a));return a*a*(3-2*a)}
-const hash=(i,j)=>{const n=Math.sin(i*127.1+j*311.7)*43758.5453;return n-Math.floor(n)};
-function vnoise(x,z){const i=Math.floor(x),j=Math.floor(z),fx=x-i,fz=z-j,u=fx*fx*(3-2*fx),v=fz*fz*(3-2*fz);
- return hash(i,j)*(1-u)*(1-v)+hash(i+1,j)*u*(1-v)+hash(i,j+1)*(1-u)*v+hash(i+1,j+1)*u*v}
-function fbm(x,z,o){let a=.5,f=1,s=0,n=0;for(let k=0;k<o;k++){s+=a*vnoise(x*f,z*f);n+=a;a*=.5;f*=2}return s/n}
+
+
+
+
 let HM=null; // real DEM heightmap {d,w,h,amp} covering the 8 km x 8 km world
 function hmSample(x,z){const u=(x/8000+.5)*(HM.w-1),v=(z/8000+.5)*(HM.h-1);if(u<0||v<0||u>=HM.w-1||v>=HM.h-1)return 0;
  const i=u|0,j=v|0,fu=u-i,fv=v-j,g=(a,b)=>HM.d[b*HM.w+a];
@@ -147,10 +146,10 @@ const T=mk(),cur=mk(),E={hum:null,ws:8,wd:270,temp:24,turb:'LIGHT',vis:8000,dust
 let org=null,last=0,everData=false,camSnap=true,qSnap=true,frozen=false,camMode='chase',az=.6,el=.3;
 const curQ=new THREE.Quaternion(),tq=new THREE.Quaternion(),eu=new THREE.Euler(),look=new THREE.Vector3(),rec=[],rep={on:false,i:0,pt:0,paused:false,fr:[]};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
-const num=(v,lo,hi,d)=>typeof v==='number'&&Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d;
+
 const LIM={EAGLE:{p:35,r:60},RAVEN:{p:40,r:70}}; // aircraft-specific visual motion limits
 const ICON={ENGINE_OVERHEAT:'🔥',VIBRATION:'📳',LOW_BATTERY:'🔋',HIGH_TEMP:'🌡',DUST_EXPOSURE:'🌫',LINK_LOSS:'📡',GNSS_DEGRADED:'🛰'};
-const toXZ=(la,lo)=>({x:(lo-org.lon)*111320*Math.cos(org.lat*Math.PI/180),z:-(la-org.lat)*110574});
+const toXZ=(la,lo)=>toXZo(org,la,lo);
 let wpKey='',WPS=[];const wpG=new THREE.Group();scene.add(wpG);
 function setWaypoints(w){const k=JSON.stringify(w);if(k===wpKey)return;wpKey=k;
  while(wpG.children.length){const o=wpG.children.pop();o.geometry&&o.geometry.dispose()}
@@ -216,15 +215,15 @@ function demoFrame(){
  else if(t<80){ph=t>=30&&t<72?'ENVIRONMENT':'CRUISE';alt=ca;v=22}
  else if(t<98){ph='DESCENT';alt=ca-(ca-20)*(t-80)/18;v=22}
  else{ph='LANDING';const u=(t-98)/12;alt=20*(1-u);v=22*(1-u)}
- dS+=v*dt;const Rr=420,u=dS/Rr,x=Rr*Math.sin(u),z=Rr*(1-Math.cos(u));
+ dS+=v*dt;const Rr=420,u=dS/Rr;let x=Rr*Math.sin(u),z=Rr*(1-Math.cos(u)),CH=null;if(CR){const q=routePos(CR,dS/DT);x=q.x;z=q.z;CH=q.hdg}
  const climb=(alt-dAlt)/dt;dAlt=alt;
  const bump=t>48&&t<72?Math.sin((t-48)/24*Math.PI):0,dust=sc==='DESERT'?bump:0,ash=sc==='ASH'?bump:0,la=12.97;
  ingest({seq:++dSeq,aircraft_id:E_?'EAGLE_EYE_MINI':'RQ11B',mission_id:'DEMO',scenario:sc,phase:ph,timestamp:new Date().toISOString(),
-  flight:{altitude_m:alt,airspeed_ms:v,heading_deg:(90+u*180/Math.PI)%360,pitch_deg:v>1?Math.asin(Math.max(-1,Math.min(1,climb/v)))*180/Math.PI:0,
-   roll_deg:v>1?Math.atan(v*v/(9.81*Rr))*180/Math.PI+Math.sin(t*1.3)*1.5:0,latitude:la-z/110574,longitude:77.59+x/(111320*Math.cos(rad(la)))},
+  flight:{altitude_m:alt,airspeed_ms:v,heading_deg:CH!=null?CH:(90+u*180/Math.PI)%360,pitch_deg:v>1?Math.asin(Math.max(-1,Math.min(1,climb/v)))*180/Math.PI:0,
+   roll_deg:CR?(v>1?bankFrom(CH,dt):0):(v>1?Math.atan(v*v/(9.81*Rr))*180/Math.PI+Math.sin(t*1.3)*1.5:0),latitude:la-z/110574,longitude:77.59+x/(111320*Math.cos(rad(la)))},
   propulsion:{[E_?'engine_rpm':'motor_rpm']:t<4?0:(E_?6200:5200)*(.4+.6*v/22),battery_voltage_v:16-t*.012,current_a:v?12.4+Math.sin(t)*.8:0,motor_temp_c:35+t*.12+(t>55&&t<68?14:0),fuel_pct:100-t*.35},
   environment:{humidity_pct:SCN[sc].hum,wind_speed_ms:c.wind,wind_dir_deg:270,temperature_c:c.temp,turbulence:c.turb,visibility_m:c.vis*(1-.85*Math.max(dust,ash)),dust,ash},
-  faults:demoFaults(t,E_,dust,ash),sensors:demoSens(dust,ash),mission:{time_s:t,state:ph,progress:Math.min(1,t/98),wp_index:Math.min(3,Math.floor(t/26)),waypoints:WP}});
+  faults:demoFaults(t,E_,dust,ash),sensors:demoSens(dust,ash),mission:{time_s:t,state:ph,progress:Math.min(1,t/98),wp_index:Math.min(3,Math.floor(t/26)),waypoints:CR?WPC:WP}});
 }
 // ---------- connection ----------
 let mode='demo',ws=null,demoTimer=setInterval(demoFrame,100),retry=null,wsState='—';
@@ -232,8 +231,9 @@ function stopAll(){clearInterval(mTimer);$("man").style.display="none";clearInte
 function goDemo(){stopAll();mode='demo';wsState='—';demoTimer=setInterval(demoFrame,100);$('bDemo').className='on';$('bLive').className='';$('bMan').className=''}
 function goLive(){stopAll();mode='live';X.seq=-1;$('bLive').className='on';$('bDemo').className='';$('bMan').className='';everData=false;connect()}
 function connect(){if(mode!=='live')return;wsState='connecting';
+ X.seq=-1;X.drop=0;X.bad=0;last=performance.now(); // new socket = new stream: never carry the old seq watermark into a reconnect
  try{const u=$('url').value.trim(),tk=$('tok').value.trim();ws=new WebSocket(tk?u+(u.includes('?')?'&':'?')+'token='+encodeURIComponent(tk):u);}catch(e){wsState='bad URL';return}
- ws.onopen=()=>{wsState='connected';ws.send(JSON.stringify({type:'hello',client:'skynex-3d',protocol:1}))};ws.onmessage=ev=>{try{ingest(JSON.parse(ev.data))}catch(e){console.warn('bad frame',e)}};
+ ws.onopen=()=>{wsState='connected';ws.send(JSON.stringify({type:'hello',client:'skynex-3d',protocol:1}))};ws.onmessage=onWsMsg;
  ws.onerror=()=>{};ws.onclose=()=>{wsState='disconnected — retrying';retry=setTimeout(connect,2000)}}
 $('bLive').onclick=goLive;$('bDemo').onclick=goDemo;
 $('ac').onchange=()=>mode!=='live'&&setAircraft($('ac').value==='RQ11B'?'RAVEN':'EAGLE');
@@ -387,7 +387,7 @@ function sideView(){const cv=$('sv'),g=cv.getContext('2d'),W=cv.width,Hh=cv.heig
  g.fillStyle='#fff';g.beginPath();g.moveTo(xx(X.dist)+9,yy(cur.alt));g.lineTo(xx(X.dist)-7,yy(cur.alt)-6);g.lineTo(xx(X.dist)-7,yy(cur.alt)+6);g.fill();if(X.phase==='LANDING')g.fillText('🏁',xx(X.dist)+4,yy(cur.alt)-8)}
 const RT=new THREE.WebGLRenderTarget(320,180,{encoding:THREE.sRGBEncoding}),topCam=new THREE.PerspectiveCamera(50,320/180,1,14000),pxb=new Uint8Array(320*180*4),tctx=$('cvTop').getContext('2d'),tim=tctx.createImageData(320,180);
 let tvT=0;
-function topView(dt){ // GPU render + 320x180 pixel readback: throttle to ~8 fps and skip while the panel is scrolled out of view
+function topView(dt){ // GPU render + 320x180 pixel readback: throttle to ~8 fps, and skip while the panel is scrolled out of view
  tvT+=dt;const r=$('cvTop').getBoundingClientRect();if(tvT<.12||r.bottom<0||r.top>innerHeight||r.right<0||r.left>innerWidth)return;tvT=0;
  topCam.position.set(cur.x,uav.position.y+260,cur.z+.01);topCam.up.set(0,0,-1);topCam.lookAt(uav.position);
  R.setRenderTarget(RT);R.render(scene,topCam);R.setRenderTarget(null);R.readRenderTargetPixels(RT,0,0,320,180,pxb);
@@ -412,14 +412,14 @@ function updateUI(now,dt,stale,dens0){
  const si=STI[X.phase]??-1,sl=['Takeoff','Climb',sn.z+' Flight','Cruise','Descent','Landing'];
  $('steps').innerHTML=sl.map((t,i)=>`<div class="stp ${i<si?'done':i===si?'cur':''}">${t}<i></i></div>`).join('');
  const vis=E.vis>=1000?(E.vis/1000).toFixed(1)+' km':E.vis.toFixed(0)+' m',dn=Math.max(E.dust,E.ash);
- const er=[['🌡','Temperature',`${sv('temp',E.temp.toFixed(0))} °C`],['💨','Wind Speed',`${sv('ws',E.ws.toFixed(0))} m/s`],['🧭','Wind Direction',`${sv('wd',E.wd.toFixed(0))}° (${cardinal(E.wd)})`],
+ const er=[['🌡','Temperature',`${sv('temp',uv(E.temp,'°C',0))}`],['💨','Wind Speed',`${sv('ws',uv(E.ws,'m/s',0))}`],['🧭','Wind Direction',`${sv('wd',E.wd.toFixed(0))}° (${cardinal(E.wd)})`],
   ['💧','Humidity',E.hum==null?'—':E.hum.toFixed(0)+' %'],['〰️','Turbulence',cap(E.turb)],['👁','Visibility',vis]];
  if(S.sc==='ASH'||S.sc==='DESERT'){er.push(['🌫',S.sc==='ASH'?'Ash conc.':'Dust conc.',(dn*100).toFixed(0)+' %'],['📟','Sensor contam. (reported)',X.sens==null?'n/a':X.sens.toFixed(0)+' %'])}
  $('env').innerHTML=er.map(r=>`<div class="er"><span>${r[0]}</span><span>${r[1]}</span><b>${r[2]}</b></div>`).join('');
  const nm=['Mission started','Takeoff completed','Climb to mission altitude',`Entered ${sn.z.toLowerCase()} area`,`Executing ${sn.z.toLowerCase()} mission`,'Cruise','Descent','Landing'];
  $('evl').innerHTML=nm.map((n,i)=>`<div class="evr ${i<evCur?'done':i===evCur?'cur':''}"><i></i><span>${EV[i]!=null?fmt(EV[i]):'--:--'}</span><b>${n}</b></div>`).join('')+FEV.slice(-5).map(f=>`<div class="evr cur"><i></i><span>${fmt(f.t)}</span><b>⚠ ${f.m}</b></div>`).join('');
- const la=X.lat,lo=X.lon;$('tel').innerHTML=`<div><span>Altitude</span><b>${sv('alt',cur.alt.toFixed(0))} m</b></div><div><span>Airspeed</span><b>${sv('speed',X.speed.toFixed(1))} m/s</b></div><div><span>Vertical Speed</span><b>${vsp.toFixed(1)} m/s</b></div><div><span>Position</span><b>${Math.abs(la).toFixed(4)} ${la<0?'S':'N'}, ${Math.abs(lo).toFixed(4)} ${lo<0?'W':'E'}</b></div><div><span>Heading</span><b>${sv('hdg',String(Math.round(cur.hdg)%360).padStart(3,'0'))}°</b></div>${mode==='manual'?'<div><small class="st">drag underlined values left/right</small></div>':''}`;
- const cs=cells(),hk=['a','b','c','spd','alt','pit','rol'];cs.forEach((c,i)=>{$('ti'+i).textContent=c.i;$('tl'+i).textContent=c.l;$('tv'+i).textContent=Number.isFinite(c.v)&&c.v!==null?c.v.toFixed(c.d)+' '+c.u:'n/a';chart($('tg'+i),HS[hk[i]],c.c)});
+ const la=X.lat,lo=X.lon;$('tel').innerHTML=`<div><span>Altitude</span><b>${sv('alt',uv(cur.alt,'m',0))}</b></div><div><span>Airspeed</span><b>${sv('speed',uv(X.speed,'m/s',1))}</b></div><div><span>Vertical Speed</span><b>${uv(vsp,'m/s',1)}</b></div><div><span>Position</span><b>${Math.abs(la).toFixed(4)} ${la<0?'S':'N'}, ${Math.abs(lo).toFixed(4)} ${lo<0?'W':'E'}</b></div><div><span>Heading</span><b>${sv('hdg',String(Math.round(cur.hdg)%360).padStart(3,'0'))}°</b></div>${mode==='manual'?'<div><small class="st">drag underlined values left/right</small></div>':''}`;
+ const cs=cells(),hk=['a','b','c','spd','alt','pit','rol'];cs.forEach((c,i)=>{$('ti'+i).textContent=c.i;$('tl'+i).textContent=c.l;$('tv'+i).textContent=Number.isFinite(c.v)&&c.v!==null?uv(c.v,c.u,c.d):'n/a';chart($('tg'+i),HS[hk[i]],c.c)});
  minimap();sideView();topView(dt);
  $('fl').innerHTML='<b>Aircraft health (from Laptop 1)</b><br>'+(X.list.length?X.list.map(q=>`<span class="off">${ICON[q.code]||'⚠'} ${q.message}</span>`).join('<br>'):'<span class="ok">No faults reported</span>')+`<br><small>${srcText()} · ${X.drop}/${X.bad} rejected</small>`;
  $('stale').style.display=stale?'block':'none';$('warn').style.display=X.anom?'block':'none';$('warn').textContent='⚠ '+(X.anom||'');
@@ -457,7 +457,7 @@ function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-prev)/
  if(camMode!=='top')cam.position.y=Math.max(cam.position.y,H(cam.position.x,cam.position.z)+3);cam.lookAt(look);
  const th=($('tod').value-6)/12*Math.PI,sy=Math.max(.05,Math.sin(th)),sd=new THREE.Vector3(Math.cos(th),Math.max(.12,sy),-.3).normalize();
  sun.position.copy(uav.position).addScaledVector(sd,1500);sun.target.position.copy(uav.position);sun.intensity=(.25+.9*sy)*wx.dim;sun.color.setHSL(.1,(1-sy)*.6,.92);sky.material.uniforms.sunDir.value.copy(sd);sky.material.uniforms.dim.value=.4+.6*wx.dim;
- sky.position.copy(cam.position);R.render(scene,cam);
+ sky.position.copy(cam.position);R.render(scene,cam);PERF.c=R.info.render.calls;PERF.t=R.info.render.triangles;if(SHOT){const cb=SHOT;SHOT=null;cb(R.domElement.toDataURL('image/png'))}
  hudT+=dt;updateUI(now,dt,stale,dens0);
 }
 fit();resetHist();setScenario('FOREST');setAircraft('EAGLE');requestAnimationFrame(loop);
@@ -475,7 +475,7 @@ function art(k,c){const C=SKY[k];let o=`<svg viewBox="0 0 400 200" preserveAspec
  if(k==='DESERT')o+=`<path d="M0 140 Q80 105 170 135 T400 120 V200 H0Z" fill="${C[1]}"/><path d="M0 175 Q110 145 220 168 T400 158 V200 H0Z" fill="${C[2]}"/><ellipse cx="285" cy="110" rx="110" ry="26" fill="#d9b27a" opacity=".55"/>`;
  if(k==='MOUNTAIN')o+=`<path d="M0 170 L90 75 L140 115 L210 30 L290 125 L340 85 L400 155 V200 H0Z" fill="${C[1]}"/><path d="M210 30 L185 72 L205 64 L215 80 L235 64Z" fill="${C[2]}"/><path d="M0 180 Q100 160 200 175 T400 168 V200 H0Z" fill="#3d6b35"/>`;
  return o+`<path d="M30 170 Q110 80 210 90 T370 160" stroke="#fff" stroke-width="2.2" stroke-dasharray="6 5" fill="none"/>`+[[30,170,'Takeoff'],[110,100,'Climb'],[230,92,'Cruise'],[370,160,'Landing']].map(([x,y,t])=>`<circle cx="${x}" cy="${y}" r="5" fill="${c}" stroke="#fff"/><text x="${x-14}" y="${y-9}" fill="#fff" font-size="11" font-weight="700" stroke="#000" stroke-width=".4">${t}</text>`).join('')+`</svg>`}
-const altAt=(t,ca)=>t<4?0:t<12?((t-4)/8<.5?0:((t-4)/8-.5)*60):t<26?30+(t-12)/14*(ca-30):t<80?ca:t<98?ca-(ca-20)*(t-80)/18:20*(1-(t-98)/12);
+
 function drawCard(el,k,c){const ca=SC[k].amp>200?250:150,a=el.querySelector('[data-a]'),p=el.querySelector('[data-p]');
  {const W=a.width=320,Hh=a.height=100,g=a.getContext('2d');g.fillStyle='#8aa0c0';g.font='10px sans-serif';g.fillText(ca+' m',2,12);g.fillText('0',2,Hh-4);g.fillText('Planned altitude, 110 s demo mission',70,Hh-3);g.strokeStyle=c;g.lineWidth=2;g.beginPath();for(let t=0;t<=110;t+=2){const x=26+t/110*(W-32),y=10+(1-altAt(t,ca)/ca)*(Hh-26);t?g.lineTo(x,y):g.moveTo(x,y)}g.stroke()}
  {const W=p.width=140,Hh=p.height=100,g=p.getContext('2d');g.fillStyle='#'+new THREE.Color(SC[k].g).multiplyScalar(.75).getHexString();g.fillRect(0,0,W,Hh);g.setLineDash([5,4]);g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();for(let u=0;u<=4.5;u+=.1){const x=W/2+(Math.sin(u)*.5-.15)*W*.8,y=Hh*.15+(1-Math.cos(u))*Hh*.38;u?g.lineTo(x,y):g.moveTo(x,y)}g.stroke();g.fillStyle='#22c55e';g.beginPath();g.arc(W/2-W*.12,Hh*.15,4,0,7);g.fill()}}
@@ -483,8 +483,7 @@ function buildLobby(){$('lsc').innerHTML=CARDS.map(([k,t],i)=>`<option value="${
  $('grid').innerHTML=CARDS.map(([k,t,d,c,rows],i)=>`<div class="cd" data-k="${k}" style="--c:${c[0]};--c2:${c[1]}"><div class="ch"><div class="cn">${i+1}</div><div><b>${i+1}. ${t.toUpperCase()} ENVIRONMENT</b><small>${d}</small></div></div><div class="ca">${art(k,c[0])}<div class="cc"><h4>Environmental Conditions</h4>${rows.map(r=>`<div><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')}</div></div><div class="cb"><div><h5>Mission path (top view)</h5><canvas data-p></canvas></div><div><h5>Altitude profile</h5><canvas data-a></canvas></div></div><button class="open">Open ${t} mission ▶</button></div>`).join('');
  document.querySelectorAll('#grid .cd').forEach(el=>{const k=el.dataset.k,c=CARDS.find(q=>q[0]===k)[3][0];drawCard(el,k,c);el.onclick=()=>{$('lsc').value=k;mark()};el.querySelector('.open').onclick=e=>{e.stopPropagation();enter(k)}});mark()}
 const mark=()=>document.querySelectorAll('#grid .cd').forEach(el=>el.classList.toggle('sel',el.dataset.k===$('lsc').value));
-function enter(k){$('ac').value=$('lac').value;$('ac').onchange();$('sc').value=k;$('sc').onchange();frozen=false;doReset();$('lobby').classList.remove('show');
- try{localStorage.setItem('skynexSel',JSON.stringify({k,ac:$('lac').value}))}catch(e){}}
+function enter(k){if(!window.__fly)CR=null;window.__fly=false;$('ac').value=$('lac').value;$('ac').onchange();$('sc').value=k;$('sc').onchange();frozen=false;doReset();$('lobby').classList.remove('show')}
 const syncSp=()=>{$('lsp1').className=simSpeed===1?'on':'';$('lsp2').className=simSpeed===2?'on':''};
 $('lStart').onclick=()=>enter($('lsc').value);$('lPause').onclick=()=>$('bPause').click();$('lReset').onclick=()=>doReset();$('lsc').onchange=mark;
 $('lsp1').onclick=()=>{setSp(1);syncSp()};$('lsp2').onclick=()=>{setSp(2);syncSp()};$('bLobby').onclick=()=>$('lobby').classList.add('show');
@@ -493,8 +492,81 @@ let VS=75;try{VS=parseInt(localStorage.getItem('skynexVS'))||75}catch(e){}
 function setVS(v){if(![50,75,100].includes(v))v=75;VS=v;document.body.classList.remove('vs50','vs75','vs100');document.body.classList.add('vs'+v);document.querySelectorAll('[data-vs]').forEach(b=>b.classList.toggle('on',+b.dataset.vs===v));try{localStorage.setItem('skynexVS',v)}catch(e){}setTimeout(fit,50)}
 document.querySelectorAll('[data-vs]').forEach(b=>b.onclick=()=>setVS(+b.dataset.vs));setVS(VS);
 $('bFull').onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(e){}};
+
+// ---------- link health, schema check ----------
+const L={rtt:null,n:0,fps:0,t:performance.now(),schema:null};
+function onWsMsg(ev){let d;try{d=JSON.parse(ev.data)}catch(e){X.bad++;return}
+ if(d&&d.type==='pong'){if(typeof d.t==='number')L.rtt=Date.now()-d.t;return}
+ if(d&&!protocolOk(d.protocol)){L.schema=d.protocol;X.bad++;return}
+ if(d&&d.flight)L.n++;
+ try{ingest(d)}catch(e){console.warn('bad frame',e)}}
+setInterval(()=>{const n=performance.now(),dt=(n-L.t)/1000;if(dt>=1){L.fps=L.n/dt;L.n=0;L.t=n}let s;
+ if(mode==='live'){const age=everData?((n-last)/1000).toFixed(1)+' s':'-';s=(L.schema!=null?'<span class="off">SCHEMA MISMATCH (protocol '+L.schema+', expected 1)</span> · ':'')+`RTT ${L.rtt==null?'-':L.rtt+' ms'} · ${L.fps.toFixed(1)} fr/s · drop ${X.drop} · bad ${X.bad} · last ${age}`}else s='local '+mode;$('lnk').innerHTML=s},500);
+// ---------- persisted alert log + audio cues + peaks ----------
+const AL=[],act=new Set(),PK={alt:0,spd:0,wind:0,dust:0,ash:0,tmax:-1e9,tmin:1e9,mt:0},CRIT=new Set(['ENGINE_OVERHEAT','LOW_BATTERY','LINK_LOSS']);let sndOn=false,AC_=null,SHOT=null;
+function beep(sev){if(!sndOn)return;try{AC_=AC_||new(window.AudioContext||window.webkitAudioContext)();const o=AC_.createOscillator(),g=AC_.createGain();o.frequency.value=sev==='CRITICAL'?1100:660;g.gain.value=.08;o.connect(g);g.connect(AC_.destination);o.start();o.stop(AC_.currentTime+.18)}catch(e){}}
+function renderAL(msg){$('alg').innerHTML=(msg?'<div class="warn2">'+esc(msg)+'</div>':'')+(AL.slice(-60).reverse().map(a=>`<div class="al"><span>${a.w}</span><span class="${a.sev==='CRITICAL'?'crit':'warn2'}">${a.sev} · ${a.msg} <small>(t=${fmt(a.mt)}, ${a.sc})</small></span></div>`).join('')||'<small>No alerts yet</small>')}
+function alertScan(m){if(m.__rep||!m.flight)return;PK.alt=Math.max(PK.alt,cur.alt);PK.spd=Math.max(PK.spd,X.speed);PK.wind=Math.max(PK.wind,E.ws);PK.dust=Math.max(PK.dust,E.dust*100);PK.ash=Math.max(PK.ash,E.ash*100);PK.tmax=Math.max(PK.tmax,E.temp);PK.tmin=Math.min(PK.tmin,E.temp);PK.mt=Math.max(PK.mt,X.mt);
+ const now=new Set(X.list.map(q=>q.code));X.list.forEach(q=>{if(!act.has(q.code)){act.add(q.code);const sev=alertSeverity(q.code);AL.push({w:new Date().toLocaleTimeString(),mt:X.mt,code:q.code,msg:q.message,sev,sc:S.sc});beep(sev);renderAL()}});
+ [...act].forEach(c=>{if(!now.has(c))act.delete(c)})}
+{const _i=ingest;ingest=function(m){_i(m);try{alertScan(m)}catch(e){}}}
+renderAL();
+$('tSnd').onclick=()=>{sndOn=!sndOn;$('tSnd').textContent=sndOn?'🔔 Audio cues: on':'🔕 Audio cues: off';if(sndOn)beep('WARNING')};
+$('tClr').onclick=()=>{AL.length=0;act.clear();renderAL()};
+const togglePanel=()=>{$('alp').style.display=$('alp').style.display==='block'?'none':'block'};$('bLog').onclick=togglePanel;$('bHelp').onclick=()=>$('kb').classList.add('show');$('kb').onclick=()=>$('kb').classList.remove('show');
+addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.key==='?'||e.key==='h')$('kb').classList.toggle('show');if(e.key==='l')togglePanel()});
+// ---------- screenshot, report, recording save/load, replay scrubber ----------
+function dl(name,b){const a=document.createElement('a');a.href=typeof b==='string'?b:URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove()}
+$('tShot').onclick=()=>{SHOT=u=>dl('skynex-view.png',u)};
+$('tRep').onclick=()=>{SHOT=img=>{const P=PF.length?PF:[{x:0,z:0,d:0,alt:0}],xs=P.map(p=>p.x),zs=P.map(p=>p.z),x0=Math.min(...xs),z0=Math.min(...zs),sc=Math.min(320/Math.max(50,Math.max(...xs)-x0),260/Math.max(50,Math.max(...zs)-z0)),
+ route=P.map((p,i)=>(i?'L':'M')+(20+(p.x-x0)*sc).toFixed(1)+' '+(20+(p.z-z0)*sc).toFixed(1)).join(''),dm=Math.max(1,P[P.length-1].d),am=Math.max(50,...P.map(p=>p.alt)),alt=P.map((p,i)=>(i?'L':'M')+(40+p.d/dm*460).toFixed(1)+' '+(10+(1-p.alt/am)*170).toFixed(1)).join('');
+ const src=mode==='demo'?'DEMO SIMULATION: built-in generator, not measured data':mode==='live'?'LIVE feed from the simulator link':'MANUAL control (slider inputs)',sn=SCN[S.sc];
+ const faults=AL.map(a=>`<tr><td>${a.w}</td><td>${fmt(a.mt)}</td><td>${a.sev}</td><td>${a.msg}</td></tr>`).join('')||'<tr><td colspan="4">No alerts raised</td></tr>';
+ const doc=`<!doctype html><meta charset="utf-8"><title>SKYNEX mission report</title><style>body{font:14px/1.5 Segoe UI,sans-serif;max-width:900px;margin:24px auto;color:#14172a;padding:0 16px}h1{margin:0}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d9dcea;padding:4px 8px;text-align:left}.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}svg{background:#f4f5fa;border:1px solid #d9dcea;width:100%}img{width:100%;border:1px solid #d9dcea}small{color:#5d647c}</style>
+<h1>SKYNEX mission report</h1><p><b>${sn.n}</b> · ${esc(AC_SPEC[S.ac].name)} · generated ${new Date().toLocaleString()}<br><small>Data source: ${src}</small></p>
+<table><tr><th>Mission time</th><th>Distance</th><th>Peak altitude</th><th>Peak airspeed</th><th>Peak wind</th><th>Temp range</th><th>Peak dust / ash</th></tr><tr><td>${fmt(PK.mt)}</td><td>${(X.dist/1000).toFixed(2)} km</td><td>${PK.alt.toFixed(0)} m</td><td>${PK.spd.toFixed(1)} m/s</td><td>${PK.wind.toFixed(1)} m/s</td><td>${PK.tmin.toFixed(0)} to ${PK.tmax.toFixed(0)} °C</td><td>${PK.dust.toFixed(0)} / ${PK.ash.toFixed(0)} % (visual)</td></tr></table>
+<div class="g"><div><h3>Route (top view)</h3><svg viewBox="0 0 360 300"><path d="${route}" fill="none" stroke="#1d6fe0" stroke-width="2"/></svg></div><div><h3>Altitude profile</h3><svg viewBox="0 0 520 190"><path d="${alt}" fill="none" stroke="#7c3aed" stroke-width="2"/></svg><small>peak ${am.toFixed(0)} m over ${(dm/1000).toFixed(2)} km</small></div></div>
+<h3>Alert timeline</h3><table><tr><th>Clock</th><th>Mission time</th><th>Severity</th><th>Message</th></tr>${faults}</table><h3>3D view at export</h3><img src="${img}" alt="3D view">
+<p><small>Ground speed follows the mission timeline; a custom route stretches the ground track. Synthetic demo data unless the source above says LIVE.</small></p>
+</body></html>`;
+ dl('skynex-mission-report.html',new Blob([doc],{type:'text/html'}))}};
+$('tSave').onclick=()=>{if(rec.length<20){renderAL('Nothing to save yet: run a mission first.');return}dl('skynex-recording.json',new Blob([JSON.stringify({version:1,frames:rec.map(r=>({t:r.t,m:r.m}))})],{type:'application/json'}))};
+$('tLoad').onclick=()=>$('tFile').click();
+$('tFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text()),fr=(j.frames||[]).filter(r=>r&&typeof r.t==='number'&&r.m&&r.m.flight);if(fr.length<20)throw new Error('needs at least 20 valid frames');rec.length=0;rec.push(...fr);rep.on=false;$('bRec').click();renderAL('Recording loaded: '+fr.length+' frames. Replaying.')}catch(er){renderAL('Could not load recording: '+er.message)}};
+let scrDrag=false;$('scr').onpointerdown=()=>scrDrag=true;addEventListener('pointerup',()=>scrDrag=false);
+$('scr').oninput=e=>{const v=+e.target.value;if(!rep.on||!rep.fr[v])return;rep.i=v;rep.pt=(rep.fr[v].t-rep.fr[0].t)/1000;rep.paused=true;clearTrail();ingest(Object.assign({__rep:1},rep.fr[v].m))};
+setInterval(()=>{$('scrub').style.display=rep.on?'block':'none';if(rep.on&&rep.fr.length){$('scr').max=rep.fr.length-1;if(!scrDrag)$('scr').value=rep.i;$('scl').textContent='Replay frame '+rep.i+' / '+(rep.fr.length-1)}},250);
+
+// ---------- custom demo route ----------
+let CR=null,WPC=null,pH=null,draft=[];const DT=2112,SPAN=4000; // DT = ground distance the 110 s demo profile covers (m)
+function bankFrom(hd,dt){const d=pH==null?0:wrap(hd-pH)/Math.max(dt,.01);pH=hd;return Math.max(-30,Math.min(30,Math.atan(22*rad(d)/9.81)*180/Math.PI))}
+function drawRte(){const c=$('rc'),g=c.getContext('2d'),W=c.width;g.clearRect(0,0,W,W);g.strokeStyle='#1e2d47';for(let i=0;i<=8;i++){g.beginPath();g.moveTo(i*W/8,0);g.lineTo(i*W/8,W);g.moveTo(0,i*W/8);g.lineTo(W,i*W/8);g.stroke()}
+ g.fillStyle='#8aa0c0';g.font='12px sans-serif';g.fillText('4 km x 4 km, north up',8,16);g.strokeStyle='#fff';g.lineWidth=2;g.setLineDash([6,5]);g.beginPath();
+ draft.forEach((p,i)=>{const x=(p.x/SPAN+.5)*W,y=(p.z/SPAN+.5)*W;i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.setLineDash([]);
+ draft.forEach((p,i)=>{g.fillStyle=i?'#facc15':'#22c55e';g.beginPath();g.arc((p.x/SPAN+.5)*W,(p.z/SPAN+.5)*W,6,0,7);g.fill()});
+ const L=routeLen(draft);$('rinfo').textContent=`${draft.length} waypoints · ${(L/1000).toFixed(2)} km. The demo mission covers about 2.1 km in 110 s; other lengths stretch the ground track, so ground speed will not match the airspeed readout.`}
+$('bRoute').onclick=()=>{draft=[];$('rte').classList.add('show');drawRte()};$('rClose').onclick=()=>$('rte').classList.remove('show');
+$('rc').onclick=e=>{if(draft.length>=10)return;const r=$('rc').getBoundingClientRect();draft.push({x:((e.clientX-r.left)/r.width-.5)*SPAN,z:((e.clientY-r.top)/r.height-.5)*SPAN});drawRte()};
+$('rUndo').onclick=()=>{draft.pop();drawRte()};$('rClr').onclick=()=>{draft=[];drawRte()};
+$('rFly').onclick=()=>{if(draft.length<2||routeLen(draft)<100){$('rinfo').textContent='Add at least 2 waypoints, 100 m or more apart.';return}
+ CR=draft.map(p=>({x:p.x-draft[0].x,z:p.z-draft[0].z}));WPC=CR.map(p=>({latitude:12.97-p.z/110574,longitude:77.59+p.x/(111320*Math.cos(rad(12.97))),altitude_m:200}));pH=null;window.__fly=true;$('rte').classList.remove('show');enter($('lsc').value)};
+// ---------- units, performance HUD ----------
+try{UNITS.imperial=localStorage.getItem('skynexUnits')==='imperial'}catch(e){}
+const syncU=()=>{$('tUnit').textContent='Units: '+(UNITS.imperial?'imperial (ft, kt, °F)':'metric')};syncU();
+$('tUnit').onclick=()=>{UNITS.imperial=!UNITS.imperial;syncU();try{localStorage.setItem('skynexUnits',UNITS.imperial?'imperial':'metric')}catch(e){}};
+const PERF={c:0,t:0},CACHE={hit:0};let perfOn=false;
+$('tPerf').onclick=()=>{perfOn=!perfOn;$('perf').style.display=perfOn?'block':'none';$('tPerf').textContent='Perf HUD: '+(perfOn?'on':'off')};
+setInterval(()=>{if(perfOn)$('perf').innerHTML=`fps ${(1/fpsA).toFixed(0)} · draw calls ${PERF.c} · triangles ${PERF.t} · quality ${quality} · pixel ratio ${pr.toFixed(2)} · cache hits ${CACHE.hit}`},500);
+// ---------- IndexedDB cache for DEM and OSM downloads (30 days) ----------
+if(window.indexedDB){const of=window.fetch.bind(window),idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('skynex-cache',1);r.onupgradeneeded=()=>r.result.createObjectStore('c');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+ const get=async k=>{const d=await idb();return new Promise(r=>{const q=d.transaction('c').objectStore('c').get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})},put=async(k,v)=>{const d=await idb();d.transaction('c','readwrite').objectStore('c').put(v,k)};
+ window.fetch=async(u,o)=>{const url=String(u);if(!/open-meteo\.com\/v1\/elevation|overpass-api\.de/.test(url))return of(u,o);const k=url+(o&&o.body?'|'+o.body:'');
+  try{const c=await get(k);if(c&&Date.now()-c.t<2592e6){CACHE.hit++;return new Response(c.b,{status:200,headers:{'Content-Type':'application/json'}})}}catch(e){}
+  const r=await of(u,o);if(r.ok)try{await put(k,{t:Date.now(),b:await r.clone().text()})}catch(e){}return r}}
+// ---------- touch: pinch to zoom (one finger drags / orbits) ----------
+{const pts=new Map();let d0=0;const el=R.domElement,dist=()=>{const[a,b]=[...pts.values()];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)};
+ el.addEventListener('pointerdown',e=>{pts.set(e.pointerId,e);if(pts.size===2){d0=dist();drag=null}});
+ el.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,e);if(pts.size===2){drag=null;const d=dist();if(d0>0&&d>0){camDist=Math.max(10,Math.min(150,camDist*d0/d));d0=d}}});
+ const up=e=>{pts.delete(e.pointerId);if(pts.size<2)d0=0};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up)}
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))!window.SKYNEX_STANDALONE&&navigator.serviceWorker.register('sw.js').catch(()=>{});
 buildLobby();$('lobby').classList.add('show');
-try{const p=JSON.parse(localStorage.getItem('skynexSel')||'null'); // remember the last UAV + scenario picked in the lobby
- if(p&&[...$('lac').options].some(o=>o.value===p.ac))$('lac').value=p.ac;
- if(p&&$('lsc').querySelector('option[value="'+p.k+'"]'))$('lsc').value=p.k;
- mark()}catch(e){}

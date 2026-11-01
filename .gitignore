@@ -1,3 +1,5 @@
 # local artefacts, not part of the project
+*.zip
 skynex-simulator-flightview.original.html
-skynex-simulator-flightview.zip
+skynex-simulator-complete.html
+skynex-simulator-full.html
