@@ -1,5 +1,7 @@
 # SKYNEX UAV Environmental Simulation
 
+[![CI](https://github.com/saibharaths7385-maker/dexathon-3d-model-uav-work/actions/workflows/ci.yml/badge.svg)](https://github.com/saibharaths7385-maker/dexathon-3d-model-uav-work/actions/workflows/ci.yml)
+
 A browser-based UAV environmental mission simulator: 3D terrain, live telemetry,
 faults, a mission report, and a demo that runs with no server and no internet.
 
